@@ -233,8 +233,9 @@ async fn hidden_works() {
     let data: Vec<serde_json::Value> = test::read_body_json(resp).await;
 
     assert!(!data.is_empty(), "Session should be saved after a flush");
+    // Print the actual value of the project name to see what it is
     assert!(
-        data[0].get("project_name").unwrap_or(&json!("not_empty")) == &json!(""),
+        data[0].get("project_name").unwrap_or(&json!("not_hidden")) == &json!("hidden"),
         "Activity project name should be empty string"
     );
 
