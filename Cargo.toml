@@ -42,5 +42,5 @@ url = "2.2"
 
 itertools = "0.10.3"
 governor = "0.6.0"
-diesel = { version = "2.1.0", features = ["chrono", "serde_json"] }
+diesel = { version = "2.1.0", features = ["chrono", "serde_json", "postgres_backend"] }
 diesel-async = { version = "0.4.1", features = ["postgres", "deadpool"] }

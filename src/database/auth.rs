@@ -25,10 +25,7 @@ impl super::DatabaseWrapper {
             .is_some())
     }
 
-    pub async fn get_user_by_name(
-        &self,
-        target_username: String,
-    ) -> Result<UserIdentity, TimeError> {
+    pub async fn get_user_by_name(&self, target_username: &str) -> Result<UserIdentity, TimeError> {
         let mut conn = self.db.get().await?;
         use crate::schema::user_identities::dsl::*;
         sql_function!(fn lower(x: diesel::sql_types::Text) -> Text);
@@ -158,7 +155,7 @@ impl super::DatabaseWrapper {
         Ok(new_user)
     }
 
-    pub async fn change_username(&self, user: i32, new_username: String) -> Result<(), TimeError> {
+    pub async fn change_username(&self, user: i32, new_username: &str) -> Result<(), TimeError> {
         let mut conn = self.db.get().await?;
 
         conn.build_transaction()
@@ -168,7 +165,7 @@ impl super::DatabaseWrapper {
                     use crate::schema::user_identities::dsl::*;
 
                     if (user_identities
-                        .filter(username.eq(new_username.clone()))
+                        .filter(username.eq(new_username))
                         .first::<UserIdentity>(&mut conn)
                         .await)
                         .is_ok()

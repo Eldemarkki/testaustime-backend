@@ -56,8 +56,3 @@ pub struct PasswordChangeRequest {
     pub old: String,
     pub new: String,
 }
-
-#[derive(Deserialize, Debug)]
-pub struct FriendRequest {
-    pub code: String,
-}

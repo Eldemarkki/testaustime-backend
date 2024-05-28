@@ -173,9 +173,7 @@ pub async fn rename_project(
     db: DatabaseWrapper,
     body: Json<RenameRequest>,
 ) -> Result<impl Responder, TimeError> {
-    let renamed = db
-        .rename_project(user.id, body.from.clone(), body.to.clone())
-        .await?;
+    let renamed = db.rename_project(user.id, &body.from, &body.to).await?;
 
     Ok(web::Json(json!({ "affected_activities": renamed })))
 }
@@ -187,7 +185,7 @@ pub async fn hide_project(
     body: Json<HideRequest>,
 ) -> Result<impl Responder, TimeError> {
     let renamed = db
-        .set_project_hidden(user.id, body.target_project.clone(), body.hidden.clone())
+        .set_project_hidden(user.id, &body.target_project, body.hidden)
         .await?;
 
     Ok(web::Json(json!({ "affected_activities": renamed })))

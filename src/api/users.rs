@@ -79,7 +79,7 @@ pub async fn get_current_activity(
             user.id
         } else {
             let target_user = db
-                .get_user_by_name(path.0.clone())
+                .get_user_by_name(&path.0)
                 .await
                 .map_err(|_| TimeError::UserNotFound)?;
 
@@ -95,7 +95,7 @@ pub async fn get_current_activity(
         }
     } else {
         let target_user = db
-            .get_user_by_name(path.0.clone())
+            .get_user_by_name(&path.0)
             .await
             .map_err(|_| TimeError::UserNotFound)?;
 
@@ -145,7 +145,7 @@ pub async fn get_activities(
 ) -> Result<impl Responder, TimeError> {
     let Some(user) = opt_user.identity else {
         let target_user = db
-            .get_user_by_name(path.0.clone())
+            .get_user_by_name(&path.0)
             .await
             .map_err(|_| TimeError::UserNotFound)?;
 
@@ -164,7 +164,7 @@ pub async fn get_activities(
         //FIXME: This is technically not required when the username equals the username of the
         //authenticated user
         let target_user = db
-            .get_user_by_name(path.0.clone())
+            .get_user_by_name(&path.0)
             .await
             .map_err(|_| TimeError::UserNotFound)?;
 
@@ -193,7 +193,7 @@ pub async fn get_activity_summary(
             db.get_all_activity(user.id).await?
         } else {
             let target_user = db
-                .get_user_by_name(path.0.clone())
+                .get_user_by_name(&path.0)
                 .await
                 .map_err(|_| TimeError::UserNotFound)?;
 
@@ -208,7 +208,7 @@ pub async fn get_activity_summary(
         }
     } else {
         let target_user = db
-            .get_user_by_name(path.0.clone())
+            .get_user_by_name(&path.0)
             .await
             .map_err(|_| TimeError::UserNotFound)?;
 

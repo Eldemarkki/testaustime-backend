@@ -106,7 +106,7 @@ pub async fn remove(
     db: DatabaseWrapper,
     body: String,
 ) -> Result<impl Responder, TimeError> {
-    let friend = db.get_user_by_name(body.clone()).await?;
+    let friend = db.get_user_by_name(&body).await?;
     let deleted = db.remove_friend(user.identity.id, friend.id).await?;
 
     if deleted {

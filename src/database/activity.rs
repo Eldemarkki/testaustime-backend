@@ -98,14 +98,14 @@ impl super::DatabaseWrapper {
     pub async fn get_user_coding_time_since(
         &self,
         uid: i32,
-        since: chrono::NaiveDateTime,
+        since: chrono::DateTime<Local>,
     ) -> Result<i32, TimeError> {
         let mut conn = self.db.get().await?;
 
         use crate::schema::coding_activities::dsl::*;
 
         Ok(coding_activities
-            .filter(user_id.eq(uid).and(start_time.ge(since)))
+            .filter(user_id.eq(uid).and(start_time.ge(since.naive_local())))
             .select(diesel::dsl::sum(duration))
             .first::<Option<i64>>(&mut conn)
             .await?
@@ -115,24 +115,15 @@ impl super::DatabaseWrapper {
     pub async fn get_coding_time_steps(&self, uid: i32) -> CodingTimeSteps {
         CodingTimeSteps {
             all_time: self
-                .get_user_coding_time_since(
-                    uid,
-                    chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
-                )
+                .get_user_coding_time_since(uid, chrono::DateTime::default())
                 .await
                 .unwrap_or(0),
             past_month: self
-                .get_user_coding_time_since(
-                    uid,
-                    chrono::Local::now().naive_local() - chrono::Duration::days(30),
-                )
+                .get_user_coding_time_since(uid, chrono::Local::now() - chrono::Duration::days(30))
                 .await
                 .unwrap_or(0),
             past_week: self
-                .get_user_coding_time_since(
-                    uid,
-                    chrono::Local::now().naive_local() - chrono::Duration::days(7),
-                )
+                .get_user_coding_time_since(uid, chrono::Local::now() - chrono::Duration::days(7))
                 .await
                 .unwrap_or(0),
         }
@@ -141,8 +132,8 @@ impl super::DatabaseWrapper {
     pub async fn rename_project(
         &self,
         target_user_id: i32,
-        from: String,
-        to: String,
+        from: &str,
+        to: &str,
     ) -> Result<usize, TimeError> {
         let mut conn = self.db.get().await?;
 
@@ -158,7 +149,7 @@ impl super::DatabaseWrapper {
     pub async fn set_project_hidden(
         &self,
         target_user_id: i32,
-        target_project: String,
+        target_project: &str,
         to: bool,
     ) -> Result<usize, TimeError> {
         let mut conn = self.db.get().await?;
