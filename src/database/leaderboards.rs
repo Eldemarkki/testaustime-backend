@@ -23,6 +23,7 @@ impl super::DatabaseWrapper {
         name: &str,
     ) -> Result<String, TimeError> {
         let code = crate::utils::generate_token();
+
         let board = NewLeaderboard {
             name: name.to_string(),
             creation_time: chrono::Local::now().naive_local(),
@@ -65,20 +66,18 @@ impl super::DatabaseWrapper {
     pub async fn regenerate_leaderboard_invite(&self, lid: i32) -> Result<String, TimeError> {
         let newinvite = crate::utils::generate_token();
 
-        let newinvite_clone = newinvite.clone();
-
         let mut conn = self.db.get().await?;
 
         use crate::schema::leaderboards::dsl::*;
         diesel::update(leaderboards.find(lid))
-            .set(invite_code.eq(newinvite_clone))
+            .set(invite_code.eq(&newinvite))
             .execute(&mut conn)
             .await?;
 
         Ok(newinvite)
     }
 
-    pub async fn delete_leaderboard(&self, lname: String) -> Result<bool, TimeError> {
+    pub async fn delete_leaderboard(&self, lname: &str) -> Result<bool, TimeError> {
         let mut conn = self.db.get().await?;
 
         use crate::schema::leaderboards::dsl::*;
@@ -89,7 +88,7 @@ impl super::DatabaseWrapper {
             != 0)
     }
 
-    pub async fn get_leaderboard_id_by_name(&self, lname: String) -> Result<i32, TimeError> {
+    pub async fn get_leaderboard_id_by_name(&self, lname: &str) -> Result<i32, TimeError> {
         sql_function!(fn lower(x: diesel::sql_types::Text) -> Text);
         use crate::schema::leaderboards::dsl::*;
 
@@ -102,7 +101,7 @@ impl super::DatabaseWrapper {
             .await?)
     }
 
-    pub async fn get_leaderboard(&self, lname: String) -> Result<PrivateLeaderboard, TimeError> {
+    pub async fn get_leaderboard(&self, lname: &str) -> Result<PrivateLeaderboard, TimeError> {
         sql_function!(fn lower(x: diesel::sql_types::Text) -> Text);
         let mut conn = self.db.get().await?;
 
@@ -157,7 +156,7 @@ impl super::DatabaseWrapper {
     pub async fn add_user_to_leaderboard(
         &self,
         uid: i32,
-        invite: String,
+        invite: &str,
     ) -> Result<crate::api::users::MinimalLeaderboard, TimeError> {
         use crate::schema::leaderboards::dsl::{invite_code, leaderboards};
 

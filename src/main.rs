@@ -1,5 +1,3 @@
-#![feature(lazy_cell, addr_parse_ascii, async_closure)]
-
 mod api;
 mod auth;
 mod database;
@@ -23,8 +21,9 @@ use actix_web::{
     web::{Data, QueryConfig},
     App, HttpMessage, HttpServer,
 };
-use auth::{secured_access::SecuredAccessTokenStorage, AuthMiddleware, Authentication};
 #[cfg(feature = "testausid")]
+use api::oauth::ClientInfo;
+use auth::{secured_access::SecuredAccessTokenStorage, AuthMiddleware, Authentication};
 use awc::Client;
 use chrono::NaiveDateTime;
 use dashmap::DashMap;
@@ -55,6 +54,9 @@ pub struct TimeConfig {
     pub address: String,
     pub database_url: String,
     pub allowed_origin: String,
+    #[cfg(feature = "testausid")]
+    #[serde(flatten)]
+    pub oauth_client_info: ClientInfo,
 }
 
 pub struct TestaustimeRootSpanBuilder;
@@ -144,6 +146,7 @@ async fn main() -> std::io::Result<()> {
                             .service(api::activity::delete)
                             .service(api::activity::flush)
                             .service(api::activity::rename_project)
+                            .service(api::activity::hide_project)
                     })
                     .service(api::auth::login)
                     .service(api::auth::regenerate)
@@ -186,6 +189,7 @@ async fn main() -> std::io::Result<()> {
         #[cfg(feature = "testausid")]
         {
             app.app_data(Data::new(client))
+                .app_data(Data::new(config.oauth_client_info.clone()))
         }
         #[cfg(not(feature = "testausid"))]
         {

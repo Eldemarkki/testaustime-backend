@@ -159,12 +159,11 @@ impl super::DatabaseWrapper {
     pub async fn regenerate_friend_code(&self, userid: i32) -> Result<String, TimeError> {
         use crate::schema::user_identities::dsl::*;
         let code = crate::utils::generate_friend_code();
-        let code_clone = code.clone();
 
         let mut conn = self.db.get().await?;
 
         diesel::update(user_identities.find(userid))
-            .set(friend_code.eq(code_clone))
+            .set(friend_code.eq(&code))
             .execute(&mut conn)
             .await?;
 

@@ -20,6 +20,12 @@ pub struct RenameRequest {
     to: String,
 }
 
+#[derive(Deserialize)]
+pub struct HideRequest {
+    target_project: String,
+    hidden: bool,
+}
+
 #[post("/update")]
 pub async fn update(
     user: UserId,
@@ -55,6 +61,7 @@ pub async fn update(
             ));
         }
     }
+
     match heartbeats.get(&user.id) {
         Some(activity) => {
             let (current_heartbeat, start, mut duration) = activity.to_owned();
@@ -166,8 +173,19 @@ pub async fn rename_project(
     db: DatabaseWrapper,
     body: Json<RenameRequest>,
 ) -> Result<impl Responder, TimeError> {
+    let renamed = db.rename_project(user.id, &body.from, &body.to).await?;
+
+    Ok(web::Json(json!({ "affected_activities": renamed })))
+}
+
+#[post("/hide")]
+pub async fn hide_project(
+    user: UserId,
+    db: DatabaseWrapper,
+    body: Json<HideRequest>,
+) -> Result<impl Responder, TimeError> {
     let renamed = db
-        .rename_project(user.id, body.from.clone(), body.to.clone())
+        .set_project_hidden(user.id, &body.target_project, body.hidden)
         .await?;
 
     Ok(web::Json(json!({ "affected_activities": renamed })))

@@ -24,6 +24,7 @@ impl super::DatabaseWrapper {
             language: heartbeat.language,
             editor_name: heartbeat.editor_name,
             hostname: heartbeat.hostname,
+            hidden: heartbeat.hidden.unwrap_or(false),
         };
 
         let mut conn = self.db.get().await?;
@@ -42,6 +43,7 @@ impl super::DatabaseWrapper {
         let mut conn = self.db.get().await?;
 
         use crate::schema::coding_activities::dsl::*;
+
         Ok(coding_activities
             .filter(user_id.eq(user))
             .load::<CodingActivity>(&mut conn)
@@ -52,6 +54,7 @@ impl super::DatabaseWrapper {
         &self,
         request: DataRequest,
         user: i32,
+        is_self: bool,
     ) -> Result<Vec<CodingActivity>, TimeError> {
         use crate::schema::coding_activities::dsl::*;
         let mut query = coding_activities.into_boxed().filter(user_id.eq(user));
@@ -78,20 +81,31 @@ impl super::DatabaseWrapper {
         };
 
         let mut conn = self.db.get().await?;
-        Ok(query.load::<CodingActivity>(&mut conn).await?)
+        let mut activities = query.load::<CodingActivity>(&mut conn).await?;
+
+        // Change hidden entries project name
+        if !is_self {
+            for act in &mut activities {
+                if act.hidden {
+                    act.project_name = Some(String::from("hidden"));
+                }
+            }
+        }
+
+        Ok(activities)
     }
 
     pub async fn get_user_coding_time_since(
         &self,
         uid: i32,
-        since: chrono::NaiveDateTime,
+        since: chrono::DateTime<Local>,
     ) -> Result<i32, TimeError> {
         let mut conn = self.db.get().await?;
 
         use crate::schema::coding_activities::dsl::*;
 
         Ok(coding_activities
-            .filter(user_id.eq(uid).and(start_time.ge(since)))
+            .filter(user_id.eq(uid).and(start_time.ge(since.naive_local())))
             .select(diesel::dsl::sum(duration))
             .first::<Option<i64>>(&mut conn)
             .await?
@@ -101,24 +115,15 @@ impl super::DatabaseWrapper {
     pub async fn get_coding_time_steps(&self, uid: i32) -> CodingTimeSteps {
         CodingTimeSteps {
             all_time: self
-                .get_user_coding_time_since(
-                    uid,
-                    chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
-                )
+                .get_user_coding_time_since(uid, chrono::DateTime::default())
                 .await
                 .unwrap_or(0),
             past_month: self
-                .get_user_coding_time_since(
-                    uid,
-                    chrono::Local::now().naive_local() - chrono::Duration::days(30),
-                )
+                .get_user_coding_time_since(uid, chrono::Local::now() - chrono::Duration::days(30))
                 .await
                 .unwrap_or(0),
             past_week: self
-                .get_user_coding_time_since(
-                    uid,
-                    chrono::Local::now().naive_local() - chrono::Duration::days(7),
-                )
+                .get_user_coding_time_since(uid, chrono::Local::now() - chrono::Duration::days(7))
                 .await
                 .unwrap_or(0),
         }
@@ -127,8 +132,8 @@ impl super::DatabaseWrapper {
     pub async fn rename_project(
         &self,
         target_user_id: i32,
-        from: String,
-        to: String,
+        from: &str,
+        to: &str,
     ) -> Result<usize, TimeError> {
         let mut conn = self.db.get().await?;
 
@@ -137,6 +142,23 @@ impl super::DatabaseWrapper {
             .filter(user_id.eq(target_user_id))
             .filter(project_name.eq(from))
             .set(project_name.eq(to))
+            .execute(&mut conn)
+            .await?)
+    }
+
+    pub async fn set_project_hidden(
+        &self,
+        target_user_id: i32,
+        target_project: &str,
+        to: bool,
+    ) -> Result<usize, TimeError> {
+        let mut conn = self.db.get().await?;
+
+        use crate::schema::coding_activities::dsl::*;
+        Ok(diesel::update(coding_activities)
+            .filter(user_id.eq(target_user_id))
+            .filter(project_name.eq(target_project))
+            .set(hidden.eq(to))
             .execute(&mut conn)
             .await?)
     }

@@ -31,12 +31,11 @@ pub async fn create_leaderboard(
     body: Json<LeaderboardName>,
     db: DatabaseWrapper,
 ) -> Result<impl Responder, TimeError> {
-    if !super::VALID_NAME_REGEX.is_match(&body.name) {
+    if !super::REGEX.with(|r| r.is_match(&body.name)) {
         return Err(TimeError::BadLeaderboardName);
     }
-    let lname = body.name.clone();
 
-    if db.get_leaderboard_id_by_name(lname).await.is_ok() {
+    if db.get_leaderboard_id_by_name(&body.name).await.is_ok() {
         return Err(TimeError::LeaderboardExists);
     }
 
@@ -62,12 +61,12 @@ pub async fn get_leaderboard(
     db: DatabaseWrapper,
 ) -> Result<impl Responder, TimeError> {
     let lid = db
-        .get_leaderboard_id_by_name(path.0.clone())
+        .get_leaderboard_id_by_name(&path.0)
         .await
         .map_err(|_| TimeError::LeaderboardNotFound)?;
 
     if db.is_leaderboard_member(user.id, lid).await? {
-        let board = db.get_leaderboard(path.0.clone()).await?;
+        let board = db.get_leaderboard(&path.0).await?;
         Ok(web::Json(board))
     } else {
         Err(TimeError::Unauthorized)
@@ -81,12 +80,12 @@ pub async fn delete_leaderboard(
     db: DatabaseWrapper,
 ) -> Result<impl Responder, TimeError> {
     let lid = db
-        .get_leaderboard_id_by_name(path.0.clone())
+        .get_leaderboard_id_by_name(&path.0)
         .await
         .map_err(|_| TimeError::LeaderboardNotFound)?;
 
     if db.is_leaderboard_admin(user.identity.id, lid).await? {
-        db.delete_leaderboard(path.0.clone()).await?;
+        db.delete_leaderboard(&path.0).await?;
         Ok(HttpResponse::Ok().finish())
     } else {
         Err(TimeError::Unauthorized)
@@ -100,10 +99,7 @@ pub async fn join_leaderboard(
     db: DatabaseWrapper,
 ) -> Result<impl Responder, TimeError> {
     match db
-        .add_user_to_leaderboard(
-            user.id,
-            body.invite.trim().trim_start_matches("ttlic_").to_string(),
-        )
+        .add_user_to_leaderboard(user.id, body.invite.trim().trim_start_matches("ttlic_"))
         .await
     {
         Err(e) => {
@@ -130,7 +126,7 @@ pub async fn leave_leaderboard(
     db: DatabaseWrapper,
 ) -> Result<impl Responder, TimeError> {
     let lid = db
-        .get_leaderboard_id_by_name(path.0.clone())
+        .get_leaderboard_id_by_name(&path.0)
         .await
         .map_err(|_| TimeError::LeaderboardNotFound)?;
 
@@ -158,13 +154,13 @@ pub async fn promote_member(
     promotion: Json<LeaderboardUser>,
 ) -> Result<impl Responder, TimeError> {
     let lid = db
-        .get_leaderboard_id_by_name(path.0.clone())
+        .get_leaderboard_id_by_name(&path.0)
         .await
         .map_err(|_| TimeError::LeaderboardNotFound)?;
 
     if db.is_leaderboard_admin(user.identity.id, lid).await? {
         let newadmin = db
-            .get_user_by_name(promotion.user.clone())
+            .get_user_by_name(&promotion.user)
             .await
             .map_err(|_| TimeError::UserNotFound)?;
 
@@ -190,13 +186,13 @@ pub async fn demote_member(
     demotion: Json<LeaderboardUser>,
 ) -> Result<impl Responder, TimeError> {
     let lid = db
-        .get_leaderboard_id_by_name(path.0.clone())
+        .get_leaderboard_id_by_name(&path.0)
         .await
         .map_err(|_| TimeError::LeaderboardNotFound)?;
 
     if db.is_leaderboard_admin(user.identity.id, lid).await? {
         let oldadmin = db
-            .get_user_by_name(demotion.user.clone())
+            .get_user_by_name(&demotion.user)
             .await
             .map_err(|_| TimeError::UserNotFound)?;
 
@@ -222,13 +218,13 @@ pub async fn kick_member(
     kick: Json<LeaderboardUser>,
 ) -> Result<impl Responder, TimeError> {
     let lid = db
-        .get_leaderboard_id_by_name(path.0.clone())
+        .get_leaderboard_id_by_name(&path.0)
         .await
         .map_err(|_| TimeError::LeaderboardNotFound)?;
 
     if db.is_leaderboard_admin(user.identity.id, lid).await? {
         let kmember = db
-            .get_user_by_name(kick.user.clone())
+            .get_user_by_name(&kick.user)
             .await
             .map_err(|_| TimeError::UserNotFound)?;
 
@@ -248,7 +244,7 @@ pub async fn regenerate_invite(
     db: DatabaseWrapper,
 ) -> Result<impl Responder, TimeError> {
     let lid = db
-        .get_leaderboard_id_by_name(path.0.clone())
+        .get_leaderboard_id_by_name(&path.0)
         .await
         .map_err(|_| TimeError::LeaderboardNotFound)?;
 

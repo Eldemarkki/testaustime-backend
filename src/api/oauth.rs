@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::LazyLock};
+use std::collections::HashMap;
 
 use actix_web::{
     cookie::Cookie,
@@ -21,13 +21,14 @@ struct TokenResponse {
     token: String,
 }
 
-#[derive(Deserialize)]
-struct ClientInfo {
+#[cfg(feature = "testausid")]
+#[derive(Debug, Deserialize, Clone)]
+pub struct ClientInfo {
     #[serde(rename = "client_id")]
-    id: String,
+    pub id: String,
     #[serde(rename = "client_secret")]
-    secret: String,
-    redirect_uri: String,
+    pub secret: String,
+    pub redirect_uri: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -42,15 +43,11 @@ struct TestausIdPlatformInfo {
     id: String,
 }
 
-static CLIENT_INFO: LazyLock<ClientInfo> = LazyLock::new(|| {
-    toml::from_str(&std::fs::read_to_string("settings.toml").expect("Missing settings.toml"))
-        .expect("Invalid Toml in settings.toml")
-});
-
 #[get("/auth/callback")]
 async fn callback(
     request: Query<TokenExchangeRequest>,
     client: Data<Client>,
+    oauth_client: Data<ClientInfo>,
     db: DatabaseWrapper,
 ) -> Result<impl Responder, TimeError> {
     if request.code.chars().any(|c| !c.is_alphanumeric()) {
@@ -62,9 +59,9 @@ async fn callback(
         .insert_header(("content-type", "application/x-www-form-urlencoded"))
         .send_form(&HashMap::from([
             ("code", &request.code),
-            ("redirect_uri", &CLIENT_INFO.redirect_uri),
-            ("client_id", &CLIENT_INFO.id),
-            ("client_secret", &CLIENT_INFO.secret),
+            ("redirect_uri", &oauth_client.redirect_uri),
+            ("client_id", &oauth_client.id),
+            ("client_secret", &oauth_client.secret),
         ]))
         .await
         .unwrap()

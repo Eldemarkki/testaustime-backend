@@ -158,12 +158,11 @@ pub async fn register(
             "Password has to be between 8 and 128 characters long".to_string(),
         ));
     }
-    if !super::VALID_NAME_REGEX.is_match(&data.username) {
+    if !super::REGEX.with(|r| r.is_match(&data.username)) {
         return Err(TimeError::BadUsername);
     }
 
-    let username = data.username.clone();
-    if db.get_user_by_name(username).await.is_ok() {
+    if db.get_user_by_name(&data.username).await.is_ok() {
         return Err(TimeError::UserExists);
     }
 
@@ -206,17 +205,16 @@ pub async fn changeusername(
             "Username is not between 2 and 32 chars".to_string(),
         ));
     }
-    if !super::VALID_NAME_REGEX.is_match(&data.new) {
+    if !super::REGEX.with(|r| r.is_match(&data.new)) {
         return Err(TimeError::BadUsername);
     }
 
-    let username = data.new.clone();
-    if db.get_user_by_name(username).await.is_ok() {
+    if db.get_user_by_name(&data.new).await.is_ok() {
         return Err(TimeError::UserExists);
     }
 
     let user = db.get_user_by_id(user.identity.id).await?;
-    db.change_username(user.id, data.new.clone()).await?;
+    db.change_username(user.id, &data.new).await?;
     Ok(HttpResponse::Ok().finish())
 }
 

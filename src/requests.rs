@@ -8,6 +8,7 @@ pub struct HeartBeat {
     pub language: Option<String>,
     pub editor_name: Option<String>,
     pub hostname: Option<String>,
+    pub hidden: Option<bool>,
 }
 
 fn project_deserialize<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
@@ -54,9 +55,4 @@ pub struct UsernameChangeRequest {
 pub struct PasswordChangeRequest {
     pub old: String,
     pub new: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct FriendRequest {
-    pub code: String,
 }
